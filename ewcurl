@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# edgeworkers-curl (ewcurl)
+#
+
+curlcmd=curl
+error=0
+verbose=0
+account_option=
+hostname=
+section=papi
+
+usage() {
+    echo "Usage: "
+    echo "    `basename $0` [ewcurl options] -- [curl options] [curl URL]"                 1>&2
+    echo "    optons:"                                                                     1>&2
+    echo "       -a     (optional) Account Switch Key for Akamai CLI command."             1>&2
+    echo "       -h     Hostname for EdgeWorkers target property."                         1>&2
+    echo "       -s     (optional) Section name in ~/.edgerc for Akamai CLI credential."   1>&2
+    echo "                         [default value is 'papi']."                             1>&2
+    echo "" 1>&2
+}
+
+opts=":a:h:s:v"
+while getopts ${opts} opt
+do
+  case ${opt} in
+    a)   
+       [ "x${OPTARG}" = "x--" ] && echo "`basename $0`: Invalid argument for -${opt}: --" 1>&2 && error=3
+       account_option="--accountkey ${OPTARG}"
+       ;;
+    h)
+       [ "x${OPTARG}" = "x--" ] && echo "`basename $0`: Invalid argument: --" 1>&2 && error=3
+       hostname="${OPTARG}"
+       ;;
+    s) 
+       [ "x${OPTARG}" = "x--" ] && echo "`basename $0`: Invalid argument: --" 1>&2 && error=3
+       section="${OPTARG}"
+       ;;
+    v)
+       verbose=1
+       ;;
+    \?)  echo "`basename $0`: Invalid option: -${OPTARG}" 1>&2 && error=1                      ;;
+    :)   echo "`basename $0`: Invalid option: -${OPTARG} requires an argument" 1>&2 && error=2 ;;
+  esac
+done
+shift $((OPTIND-1))
+
+[ "x${hostname}" = "x" ] && echo "`basename $0`: Insuccifient options - No hostname option." 1>&2 && error=4
+[ ${error} -gt 0 ] && usage && exit ${error}
+
+#
+# Run scirpt
+#
+
+options="--section ${section} ${account_option}"
+if [ "${verbose}" = "1" ]; then
+echo "Akamai EdgeWorkers Hostname:    ${hostname}" 1>&2
+echo "Akamai EdgeWorkers CLI options: ${options}"  1>&2
+echo "Curl options: $*" 1>&2
+fi
+
+tokenfile=$HOME/.akamai-ew-trace-token
+akamai_ew_trace_header="Akamai-EW-Trace"
+touch ${tokenfile}
+
+now=`date +%s`
+tokenexp=`cat ${tokenfile} | grep ${hostname} | sed "s;${hostname}=;;" | sed 's;.*~exp=\([0-9]*\)~.*;\1;'`
+if [ "x${tokenexp}" = "x" ] || [ "${now}" -ge "${tokenexp}" ]; then
+  token=`akamai edgeworkers ${options} auth --expiry 60 ${hostname} | grep "^${akamai_ew_trace_header}"`
+  if [ ! "x${token}" = "x" ]; then
+    cat ${tokenfile} | grep -v "^${hostname}=" > ${tokenfile}.tmp
+    echo "${hostname}=${token}" >> ${tokenfile}.tmp
+    mv ${tokenfile}.tmp ${tokenfile}
+  fi
+fi
+token=`cat ${tokenfile} | grep ${hostname} | sed "s;${hostname}=;;"`
+
+if [ "${verbose}" = "1" ]; then
+echo EW Trace AuthToken: ${token} 1>&2
+fi
+
+${curlcmd} \
+    -H 'Pragma: akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-ew-debug, akamai-x-ew-debug-rp' \
+    -H "${token}" \
+    $*
