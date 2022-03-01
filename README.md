@@ -4,7 +4,7 @@
 
 Shell script command wrapper for cURL to enable enhanced debug headers.
 
-ewcurl is a simple wrapper to help triggering http requests against your Akamai property which enables your EdgeWorkers applications. The script intercepts a curl command argument in order to generate a EdgeWorkers trace token as a HTTP request header by using Akamai CLI command, then uses curl to trigger a HTTP request with the HTTP request header to enable EdgeWorkers enhanced debug headers for helping you to show yoru JavaScript debugging logs.
+ewcurl is a simple wrapper to help triggering http requests against your Akamai property which enables your EdgeWorkers applications. The script prepares curl command arguments in order to include an HTTP request header of EdgeWorkers trace token by using Akamai CLI command, then uses curl to trigger a HTTP request with the HTTP request header to enable EdgeWorkers enhanced debug headers for helping you with your EdgeWorkers JavaScript app debugging logs.
 
 To enable EdgeWorkers enhanced debug headers, you will need to configure your Akamai property to add a secret key. Please follow the instructions in the Akamai EdgeWorkers documentation: [Add a secret key to your property](https://techdocs.akamai.com/edgeworkers/docs/enable-enhanced-debug-headers#add-a-secret-key-to-your-property).
 
